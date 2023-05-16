@@ -3,20 +3,21 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-def display_image(image):
+def display_image(image, gray=True, title='Image'):
     # Use Matplotlib to display the image
-    plt.imshow(image)
+    if gray:
+        plt.imshow(image, cmap='gray')
+    else:
+        plt.imshow(image)
+    plt.title(title)
     plt.axis('off')  # Hide the x and y axis
     plt.show()
 
 
-def read_image(image_path):
-    # Read the image using OpenCV
+def read_image(image_path, colorfilter=cv2.COLOR_BGR2GRAY):
+    # Read the image and filter using OpenCV
     image = cv2.imread(image_path)
-
-    # OpenCV reads images in BGR format, we'll convert it to RGB for displaying
-    image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
-
+    image = cv2.cvtColor(image, colorfilter)
     return image
 
 
@@ -43,7 +44,7 @@ def draw_houghlines(image, lines):
         y2 = int(y0 - scale * a)
 
         # Draw the lines on the image
-        cv2.line(image_copy, (x1, y1), (x2, y2), (0, 0, 255), 2)
+        cv2.line(image_copy, (x1, y1), (x2, y2), (0, 0, 0), 2)
 
     # Return the modified image
     return image_copy
