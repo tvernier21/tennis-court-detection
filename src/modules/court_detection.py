@@ -70,6 +70,10 @@ def init_court_detection(image):
     edges = cv2.Canny(blurred, 50, 150, apertureSize=3)
     ip.display_image(edges, 'Canny Edge Detection')
 
+    # process using bilateral filter
+    bilateral = cv2.bilateralFilter(image, 30, 25, 75)
+    ip.display_image(bilateral, 'Bilateral Filter')
+
 
 
 def main():
