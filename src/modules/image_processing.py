@@ -44,7 +44,7 @@ def draw_houghlines(image, lines):
         y2 = int(y0 - scale * a)
 
         # Draw the lines on the image
-        cv2.line(image_copy, (x1, y1), (x2, y2), (0, 0, 0), 2)
+        cv2.line(image_copy, (x1, y1), (x2, y2), 255, 2)
 
     # Return the modified image
     return image_copy
