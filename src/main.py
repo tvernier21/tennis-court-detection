@@ -1,2 +1,2 @@
-import opencv as cv2
+import cv2
 
