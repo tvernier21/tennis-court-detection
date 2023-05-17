@@ -21,6 +21,18 @@ def read_image(image_path, colorfilter=cv2.COLOR_BGR2GRAY):
     return image
 
 
+def draw_lines(image, lines):
+    # copy the passed image
+    image_copy = np.copy(image)
+
+    # Iterate over all detected lines and draw them on the copy of the image
+    for line in lines:
+        x1, y1, x2, y2 = line[0]
+        cv2.line(image_copy, (x1, y1), (x2, y2), 255, 2)
+
+    return image_copy
+
+
 def draw_houghlines(image, lines):
     # Copy the passed image
     image_copy = np.copy(image)

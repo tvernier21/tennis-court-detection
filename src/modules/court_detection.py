@@ -41,6 +41,19 @@ def filter_vertical_lines(lines, theta_threshold=.3):
     return filtered_lines
 
 
+def filter_vertical_linesP(lines, min_slope=3):
+    # Find vertical lines based on their slope
+    filtered_lines = []
+    for line in lines:
+        x1, y1, x2, y2 = line[0]
+        x = (x2 - x1)
+        if x == 0: x = .001
+
+        if abs((y2 - y1) / x) > min_slope:
+            filtered_lines.append(line)
+    return filtered_lines
+
+
 def filter_horizontal_lines(lines, theta_threshold=.2):
     filtered_lines = []
     for line in lines:
@@ -61,54 +74,18 @@ def filter_center_lines(lines, image_width):
     return filtered_lines
 
 
-# def detect_lines(image):
-#     # Canny edge detection -> Hough Line transformation
-#     edges = cv2.Canny(image, 50, 150, apertureSize=3)
-#     lines = cv2.HoughLines(edges, 1, np.pi / 180, 60) # Low filter (50)
-
-#     vlines = filter_vertical_lines(lines)
-#     vlines_center = filter_center_lines(vlines, image.shape[1])
-
-#     # create a mask using the drawn lines
-#     vc_lines_mask = ip.draw_houghlines(np.zeros((256,256)), vlines_center)
-#     img_vc_mask = np.where(vc_lines_mask, image, 0)
-#     ip.display_image(img_vc_mask)
-
-#     hlines = filter_horizontal_lines(lines)
-#     h_lines_mask = ip.draw_houghlines(np.zeros((256,256)), hlines)
-#     img_h_mask = np.where(h_lines_mask, image, 0)
-#     ip.display_image(img_h_mask)
-
-#     return "poop"
-
-
-# def init_court_detection(image):
-#     # Process using Gaussian Blur
-#     blurred = cv2.GaussianBlur(image, (5, 5), 0)
-#     ip.display_image(blurred, title = 'Blurred Image')
-
-#     adaptive = cv2.adaptiveThreshold(blurred, 
-#                                     255, 
-#                                     cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
-#                                     cv2.THRESH_BINARY, 
-#                                     11, 
-#                                     2)
-#     ip.display_image(adaptive, title = 'Blurred Adaptive Threshold')
-
-#     adaptive = cv2.adaptiveThreshold(image, 
-#                                     255, 
-#                                     cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
-#                                     cv2.THRESH_BINARY, 
-#                                     11, 
-#                                     2)
-#     ip.display_image(adaptive, title = ' Adaptive Threshold')
-
-#     # Process using Canny Edge Detection
-#     edges = cv2.Canny(blurred, 50, 150, apertureSize=3)
-#     ip.display_image(edges, title = 'Canny Edge Detection')
+def filter_center_linesP(lines, image_width):
+    # Filter for lines only in the center of the image (.4, .6)
+    filtered_lines = []
+    for line in lines:
+        x1, _, x2, _ = line[0]
+        x_avg = (x1 + x2) / 2
+        if x_avg > image_width * .3 and x_avg < image_width * .7:
+            filtered_lines.append(line)
+    return filtered_lines
 
     
-def find_white_lines(img):
+def find_service_box_center_point(img):
     # Apply Gaussian blur
     blurred = cv2.GaussianBlur(img, (5, 5), 0)
 
@@ -122,27 +99,40 @@ def find_white_lines(img):
     ip.display_image(white_mask)
     
     # Apply HoughLinesP
-    linesP = cv2.HoughLinesP(white_mask, rho=1, theta=np.pi/180, threshold=30, minLineLength=30, maxLineGap=10)
+    linesP = cv2.HoughLinesP(white_mask, 
+                             rho=1, 
+                             theta=np.pi/180, 
+                             threshold=30, 
+                             minLineLength=30, 
+                             maxLineGap=10)
+    
+    # Find vertical lines and filter for lines in the center of the image
+    vc_linesP = filter_center_linesP(filter_vertical_linesP(linesP), white_mask.shape[1])
+    center_line_mask = ip.draw_lines(np.zeros((256,256)), vc_linesP)
+    ip.display_image(center_line_mask, title="Center Line w/ HoughLinesP")
 
-    vc_linesP = filter_center_lines(filter_vertical_lines(linesP), img.shape[1])
-    v_linesP = filter_vertical_lines(linesP)
+    # Find the center point of the service box
+    center_line_white_mask = np.where(white_mask, center_line_mask, 0)
+    
+    # Find the y, x coordinates of all non-zero pixels
+    non_zero_y, non_zero_x = np.nonzero(center_line_white_mask)
+    # Find the index of the non-zero pixel with the largest y coordinate
+    index = np.argmax(non_zero_y)
 
-    img2 = ip.draw_houghlines(img, vc_linesP)
-    ip.display_image(img2)
-
-    return
-
+    return non_zero_x[index], non_zero_y[index]
 
 
 def main():
     # Read the image with color
     gray_image = ip.read_image('data/images/example1_0.png')
     image = ip.read_image('data/images/example1_0.png', cv2.COLOR_BGR2RGB)
-    # ip.display_image(image, False, 'Original Image')   
+    ip.display_image(image, False, 'Original Image')   
 
     # First detect_lines
     # init_court_detection(image)
-    find_white_lines(image)
+    x, y = find_service_box_center_point(image)
+    center_point = cv2.circle(image, (x, y), 3, (255, 0, 0), -1)
+    ip.display_image(center_point, False, 'Center Point')
 
 
 main()
