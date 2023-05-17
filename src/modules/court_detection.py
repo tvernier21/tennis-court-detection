@@ -96,7 +96,7 @@ def find_service_box_center_point(img):
     # Threshold the image to get only white colors
     white_mask = cv2.inRange(blurred, lower_white, upper_white)
 
-    ip.display_image(white_mask)
+    # ip.display_image(white_mask)
     
     # Apply HoughLinesP
     linesP = cv2.HoughLinesP(white_mask, 
@@ -109,7 +109,7 @@ def find_service_box_center_point(img):
     # Find vertical lines and filter for lines in the center of the image
     vc_linesP = filter_center_linesP(filter_vertical_linesP(linesP), white_mask.shape[1])
     center_line_mask = ip.draw_lines(np.zeros((256,256)), vc_linesP)
-    ip.display_image(center_line_mask, title="Center Line w/ HoughLinesP")
+    # ip.display_image(center_line_mask, title="Center Line w/ HoughLinesP")
 
     # Find the center point of the service box
     center_line_white_mask = np.where(white_mask, center_line_mask, 0)
@@ -122,17 +122,51 @@ def find_service_box_center_point(img):
     return non_zero_x[index], non_zero_y[index]
 
 
+def find_service_box_edge_points(img, center_x, center_y):
+    # Apply Gaussian blur
+    blurred = cv2.GaussianBlur(img, (3, 3), 0)
+
+    # Create a horizontal line mask based on the center point
+    mask = np.zeros_like(blurred)
+    mask[center_y-7:center_y+7, :] = 255
+
+    # Apply the mask to the image
+    service_line_img = np.where(mask, blurred, 0)
+
+    ip.display_image(service_line_img, title="Service Line Image")
+    
+    # Threshold to filter for white pixels
+     # Define range for white color
+    lower_white = np.array([130, 130, 130])
+    upper_white = np.array([255, 255, 255])
+    white_service_line = cv2.inRange(service_line_img, lower_white, upper_white)
+    ip.display_image(white_service_line, title="White Service Line")
+
+    # Define a horizontal line kernel for morphological operations
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (20, 1))
+
+    # Apply morphological operations to filter for white pixels aligned on a horizontal line
+    processed_img = cv2.morphologyEx(white_service_line, cv2.MORPH_OPEN, kernel)
+
+    ip.display_image(processed_img, title="Processed Image")
+
+
+
+
 def main():
     # Read the image with color
-    gray_image = ip.read_image('data/images/example1_0.png')
+    # gray_image = ip.read_image('data/images/example1_0.png')
     image = ip.read_image('data/images/example1_0.png', cv2.COLOR_BGR2RGB)
-    ip.display_image(image, False, 'Original Image')   
+    # ip.display_image(image, False, 'Original Image')   
 
-    # First detect_lines
-    # init_court_detection(image)
-    x, y = find_service_box_center_point(image)
-    center_point = cv2.circle(image, (x, y), 3, (255, 0, 0), -1)
-    ip.display_image(center_point, False, 'Center Point')
+    # Detect center service box point
+    center_x, center_y = find_service_box_center_point(image)
+    # image_copy = np.copy(image)
+    # cv2.circle(image_copy, (center_x, center_y), 3, (255, 0, 0), -1)
+    # ip.display_image(image_copy, False, 'Center Point')
+
+    # Use center service box point to find left and right corners of service box
+    find_service_box_edge_points(image, center_x, center_y)
 
 
 main()
