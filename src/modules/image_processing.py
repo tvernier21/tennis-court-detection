@@ -21,14 +21,14 @@ def read_image(image_path, colorfilter=cv2.COLOR_BGR2GRAY):
     return image
 
 
-def draw_lines(image, lines):
+def draw_lines(image, lines, line_thickness=2):
     # copy the passed image
     image_copy = np.copy(image)
 
     # Iterate over all detected lines and draw them on the copy of the image
     for line in lines:
         x1, y1, x2, y2 = line[0]
-        cv2.line(image_copy, (x1, y1), (x2, y2), 255, 2)
+        cv2.line(image_copy, (x1, y1), (x2, y2), 255, line_thickness)
 
     return image_copy
 

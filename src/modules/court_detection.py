@@ -136,21 +136,30 @@ def find_service_box_edge_points(img, center_x, center_y):
     ip.display_image(service_line_img, title="Service Line Image")
     
     # Threshold to filter for white pixels
-     # Define range for white color
     lower_white = np.array([130, 130, 130])
     upper_white = np.array([255, 255, 255])
     white_service_line = cv2.inRange(service_line_img, lower_white, upper_white)
     ip.display_image(white_service_line, title="White Service Line")
 
     # Define a horizontal line kernel for morphological operations
-    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (20, 1))
-
+    h_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (20, 1))
     # Apply morphological operations to filter for white pixels aligned on a horizontal line
-    processed_img = cv2.morphologyEx(white_service_line, cv2.MORPH_OPEN, kernel)
+    service_line = cv2.morphologyEx(white_service_line, cv2.MORPH_OPEN, h_kernel)
+    ip.display_image(service_line, title="Service Line w/ Morphological Operations")
 
-    ip.display_image(processed_img, title="Processed Image")
+    # Apply HoughlinesP
+    linesP = cv2.HoughLinesP(service_line,
+                             rho=1,
+                             theta=np.pi/180,
+                             threshold=50,
+                             minLineLength=30,
+                             maxLineGap=30)
+    print(f"Number of lines detected: {len(linesP)}")
+    service_line_mask = ip.draw_lines(np.zeros((256,256)), linesP, line_thickness=2)
+    ip.display_image(service_line_mask, title="Service Line w/ HoughLinesP")
 
-
+    img_service_line = np.where(np.expand_dims(service_line_mask, axis=-1), img, 0)
+    ip.display_image(img_service_line, title="actual service line")
 
 
 def main():
