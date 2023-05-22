@@ -154,12 +154,18 @@ def find_service_box_edge_points(img, center_x, center_y):
                              threshold=50,
                              minLineLength=30,
                              maxLineGap=30)
-    print(f"Number of lines detected: {len(linesP)}")
+    print(f"Number of lines detected: {len(linesP)}") 
     service_line_mask = ip.draw_lines(np.zeros((256,256)), linesP, line_thickness=2)
     ip.display_image(service_line_mask, title="Service Line w/ HoughLinesP")
 
     img_service_line = np.where(np.expand_dims(service_line_mask, axis=-1), img, 0)
     ip.display_image(img_service_line, title="actual service line")
+
+    # Having found the line, I then filter for all vertical lines
+    # I then find the intercept of the first vertical line with
+    # the service line to the left and right of the center point.
+    # I compare these points to the end points of the line segment 
+    # that I found above in img_service_line. 
 
 
 def main():
