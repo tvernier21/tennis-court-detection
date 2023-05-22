@@ -132,20 +132,16 @@ def find_service_box_edge_points(img, center_x, center_y):
 
     # Apply the mask to the image
     service_line_img = np.where(mask, blurred, 0)
-
-    ip.display_image(service_line_img, title="Service Line Image")
     
     # Threshold to filter for white pixels
     lower_white = np.array([130, 130, 130])
     upper_white = np.array([255, 255, 255])
     white_service_line = cv2.inRange(service_line_img, lower_white, upper_white)
-    ip.display_image(white_service_line, title="White Service Line")
 
     # Define a horizontal line kernel for morphological operations
     h_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (20, 1))
     # Apply morphological operations to filter for white pixels aligned on a horizontal line
     service_line = cv2.morphologyEx(white_service_line, cv2.MORPH_OPEN, h_kernel)
-    ip.display_image(service_line, title="Service Line w/ Morphological Operations")
 
     # Apply HoughlinesP
     linesP = cv2.HoughLinesP(service_line,
@@ -158,14 +154,53 @@ def find_service_box_edge_points(img, center_x, center_y):
     service_line_mask = ip.draw_lines(np.zeros((256,256)), linesP, line_thickness=2)
     ip.display_image(service_line_mask, title="Service Line w/ HoughLinesP")
 
-    img_service_line = np.where(np.expand_dims(service_line_mask, axis=-1), img, 0)
-    ip.display_image(img_service_line, title="actual service line")
+    # img_service_line = np.where(np.expand_dims(service_line_mask, axis=-1), img, 0)
 
-    # Having found the line, I then filter for all vertical lines
+    # Find service line end points
+    non_zero_y, non_zero_x = np.nonzero(service_line_mask)
+    left_index = np.argmin(non_zero_x)
+    right_index = np.argmax(non_zero_x)
+
+    bottom_left = (non_zero_x[left_index] - 5, non_zero_y[left_index] + 3)
+    bottom_right = (non_zero_x[right_index] + 5, non_zero_y[right_index] + 3)
+    top_left = (non_zero_x[left_index] - 5, non_zero_y[left_index] - 40)
+    top_right = (non_zero_x[right_index] + 5, non_zero_y[right_index] - 40)
+    box = np.array([[bottom_left, bottom_right, top_right, top_left]])
+
+    # Get white pixels in the service box
+    box_mask = np.zeros_like(blurred)
+    box_mask[center_y-40:center_y+5, non_zero_x[left_index]-5:non_zero_x[right_index]+5] = 255
+    # Apply the mask to the image
+    boxes_img = np.where(box_mask, blurred, 0)
+    
+    # Threshold to filter for white pixels
+    lower_white = np.array([130, 130, 130])
+    upper_white = np.array([255, 255, 255])
+    boxes_lines = cv2.inRange(boxes_img, lower_white, upper_white)
+    ip.display_image(boxes_lines, title="Service Box Lines")
+
+    # Get Vertical lines
+    EDGES = cv2.Canny(boxes_lines, 50, 150)
+    service_box_lines = cv2.HoughLines(EDGES, 1, np.pi/180, 20)
+    service_box_vlines = filter_vertical_lines(service_box_lines)
+    new_img = ip.draw_houghlines(img, service_box_vlines)
+    ip.display_image(new_img, title="lets gooo")    
+
+
+
+
+
+    # Having found the center line,
+    # Look for vertical line segments that intersect the center line an
+    
+
+    # Having found the line, I then filter for all vertical lines  
     # I then find the intercept of the first vertical line with
     # the service line to the left and right of the center point.
     # I compare these points to the end points of the line segment 
     # that I found above in img_service_line. 
+
+    # Find vertical lines and filter for lines in the center of the image
 
 
 def main():
