@@ -94,7 +94,7 @@ def adjust_pt(pt, remaining_distance, axis, direction):
 
     
 def find_service_box_center_point(img):
-    for white_threshold in range(150, 90, -10):
+    for white_threshold in range(130, 90, -10):
         try:
             # Apply Gaussian blur
             blurred = cv2.GaussianBlur(img, (5, 5), 0)
@@ -129,7 +129,7 @@ def find_service_box_center_point(img):
 
 
 def find_service_box_corner_points(img, center_x, center_y):
-    for white_threshold in range(150, 90, -10):
+    for white_threshold in range(130, 90, -10):
         try: 
             # Apply Gaussian blur
             blurred = cv2.GaussianBlur(img, (3, 3), 0)
@@ -199,7 +199,7 @@ def find_service_box_corner_points(img, center_x, center_y):
 def main():
     # Read the image with color
     # gray_image = ip.read_image('data/images/example1_0.png')
-    image = ip.read_image('data/images/example2_0.png', cv2.COLOR_BGR2RGB)
+    image = ip.read_image('data/images/example1_0.png', cv2.COLOR_BGR2RGB)
     ip.display_image(image, False, 'Original Image')   
 
     # Detect center service box point
