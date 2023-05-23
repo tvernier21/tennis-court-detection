@@ -12,3 +12,8 @@ Activate Environment
 
 Then install packages
 `pip install -r requirements.txt`
+
+### Examples:
+![Example Image](Figure_1.png "Example Image")
+![Example Image](Figure_2.png "Example Image")
+
