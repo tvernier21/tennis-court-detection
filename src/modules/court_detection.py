@@ -84,19 +84,23 @@ def filter_center_linesP(lines, image_width):
             filtered_lines.append(line)
     return filtered_lines
 
+
+def adjust_pt(pt, remaining_distance, axis, direction):
+    if axis == 'x':
+        pt[0] += int(direction * remaining_distance)
+    elif axis == 'y':
+        pt[1] += int(direction * remaining_distance)
+    return pt
+
     
 def find_service_box_center_point(img):
     # Apply Gaussian blur
     blurred = cv2.GaussianBlur(img, (5, 5), 0)
 
-    # Define range for white color
+    # Threshold for white pixels
     lower_white = np.array([130, 130, 130])
     upper_white = np.array([255, 255, 255])
-
-    # Threshold the image to get only white colors
     white_mask = cv2.inRange(blurred, lower_white, upper_white)
-
-    # ip.display_image(white_mask)
     
     # Apply HoughLinesP
     linesP = cv2.HoughLinesP(white_mask, 
@@ -106,18 +110,16 @@ def find_service_box_center_point(img):
                              minLineLength=30, 
                              maxLineGap=10)
     
-    # Find vertical lines and filter for lines in the center of the image
-    vc_linesP = filter_center_linesP(filter_vertical_linesP(linesP), white_mask.shape[1])
-    center_line_mask = ip.draw_lines(np.zeros((256,256)), vc_linesP)
-    # ip.display_image(center_line_mask, title="Center Line w/ HoughLinesP")
+    # Filter for vertical and centered lines
+    vert_cent_linesP = filter_center_linesP(filter_vertical_linesP(linesP), white_mask.shape[1])
+    center_line_mask = ip.draw_lines(np.zeros((256,256)), vert_cent_linesP)
 
     # Find the center point of the service box
     center_line_white_mask = np.where(white_mask, center_line_mask, 0)
     
     # Find the y, x coordinates of all non-zero pixels
     non_zero_y, non_zero_x = np.nonzero(center_line_white_mask)
-    # Find the index of the non-zero pixel with the largest y coordinate
-    index = np.argmax(non_zero_y)
+    index = np.argmax(non_zero_y) # Find the index of the bottom-most point
 
     return non_zero_x[index], non_zero_y[index]
 
@@ -130,17 +132,16 @@ def find_service_box_edge_points(img, center_x, center_y):
     mask = np.zeros_like(blurred)
     mask[center_y-7:center_y+7, :] = 255
 
-    # Apply the mask to the image
+    # Prepare image to only show service line
     service_line_img = np.where(mask, blurred, 0)
     
-    # Threshold to filter for white pixels
+    # Threshold for white pixels
     lower_white = np.array([130, 130, 130])
     upper_white = np.array([255, 255, 255])
     white_service_line = cv2.inRange(service_line_img, lower_white, upper_white)
 
-    # Define a horizontal line kernel for morphological operations
+    # Use horizontal kernel to detect service line
     h_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (20, 1))
-    # Apply morphological operations to filter for white pixels aligned on a horizontal line
     service_line = cv2.morphologyEx(white_service_line, cv2.MORPH_OPEN, h_kernel)
 
     # Apply HoughlinesP
@@ -150,57 +151,41 @@ def find_service_box_edge_points(img, center_x, center_y):
                              threshold=50,
                              minLineLength=30,
                              maxLineGap=30)
-    print(f"Number of lines detected: {len(linesP)}") 
     service_line_mask = ip.draw_lines(np.zeros((256,256)), linesP, line_thickness=2)
     ip.display_image(service_line_mask, title="Service Line w/ HoughLinesP")
 
-    # img_service_line = np.where(np.expand_dims(service_line_mask, axis=-1), img, 0)
-
-    # Find service line end points
+    # Check left endpoint and right endpoint are approximately the same distance
+    # from the center point
     non_zero_y, non_zero_x = np.nonzero(service_line_mask)
-    left_index = np.argmin(non_zero_x)
-    right_index = np.argmax(non_zero_x)
+    left_pt_idx = np.argmin(non_zero_x)
+    right_pt_idx = np.argmax(non_zero_x)
+    left_pt = [non_zero_x[left_pt_idx], non_zero_y[left_pt_idx]]
+    right_pt = [non_zero_x[right_pt_idx], non_zero_y[right_pt_idx]]
+    center_pt = [center_x, center_y]
 
-    bottom_left = (non_zero_x[left_index] - 5, non_zero_y[left_index] + 3)
-    bottom_right = (non_zero_x[right_index] + 5, non_zero_y[right_index] + 3)
-    top_left = (non_zero_x[left_index] - 5, non_zero_y[left_index] - 40)
-    top_right = (non_zero_x[right_index] + 5, non_zero_y[right_index] - 40)
-    box = np.array([[bottom_left, bottom_right, top_right, top_left]])
+    # Draw points on the image
+    # dots_img = np.copy(img)
+    # cv2.circle(dots_img, center_pt, 3, (255, 0, 0), -1)
+    # cv2.circle(dots_img, right_pt, 3, (255, 0, 0), -1)
+    # cv2.circle(dots_img, left_pt, 3, (255, 0, 0), -1)
+    # ip.display_image(dots_img, title="initial dots")
 
-    # Get white pixels in the service box
-    box_mask = np.zeros_like(blurred)
-    box_mask[center_y-40:center_y+5, non_zero_x[left_index]-5:non_zero_x[right_index]+5] = 255
-    # Apply the mask to the image
-    boxes_img = np.where(box_mask, blurred, 0)
-    
-    # Threshold to filter for white pixels
-    lower_white = np.array([130, 130, 130])
-    upper_white = np.array([255, 255, 255])
-    boxes_lines = cv2.inRange(boxes_img, lower_white, upper_white)
-    ip.display_image(boxes_lines, title="Service Box Lines")
+    # distances from center point
+    left_distance = np.linalg.norm(np.array(left_pt) - np.array(center_pt))
+    right_distance = np.linalg.norm(np.array(right_pt) - np.array(center_pt))
+    print(left_distance, right_distance)
+    if left_distance < right_distance - 4:
+        adjust_pt(left_pt, right_distance - left_distance, 'x', -1)
+        print(f"left_pt: {left_pt}")
+    elif right_distance < left_distance - 4:
+        adjust_pt(right_pt, left_distance - right_distance, 'x', 1)
+        print(f"right_pt: {right_pt}")
 
-    # Get Vertical lines
-    EDGES = cv2.Canny(boxes_lines, 50, 150)
-    service_box_lines = cv2.HoughLines(EDGES, 1, np.pi/180, 20)
-    service_box_vlines = filter_vertical_lines(service_box_lines)
-    new_img = ip.draw_houghlines(img, service_box_vlines)
-    ip.display_image(new_img, title="lets gooo")    
+    # cv2.circle(dots_img, center_pt, 3, (0, 255, 0), -1)
+    # cv2.circle(dots_img, right_pt, 3, (0, 255, 0), -1)
+    # cv2.circle(dots_img, left_pt, 3, (0, 255, 0), -1)
+    # ip.display_image(dots_img, title="continuation of dots")
 
-
-
-
-
-    # Having found the center line,
-    # Look for vertical line segments that intersect the center line an
-    
-
-    # Having found the line, I then filter for all vertical lines  
-    # I then find the intercept of the first vertical line with
-    # the service line to the left and right of the center point.
-    # I compare these points to the end points of the line segment 
-    # that I found above in img_service_line. 
-
-    # Find vertical lines and filter for lines in the center of the image
 
 
 def main():
