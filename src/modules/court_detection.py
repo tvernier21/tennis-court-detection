@@ -194,13 +194,37 @@ def find_service_box_corner_points(img, center_x, center_y):
             print(f"Retrying with white_threshold={white_threshold-10}")
 
 
+def find_baseline(img, line):
+
+    left_pt = line[0]
+    right_pt = line[1]
+
+    service_line_dst = np.linalg.norm(np.array(left_pt) - np.array(right_pt))
+    # no_mans_land_dst = int(service_line_dst * .66)
+    no_mans_land_dst = 60
+
+    blurred = cv2.GaussianBlur(img, (3,3), 0)
+
+    min_y = min(left_pt[1], right_pt[1]) + 5
+
+    # Create mask below the line
+    mask = np.zeros_like(blurred)
+    mask[min_y:min_y+no_mans_land_dst, left_pt[0]:right_pt[0]] = 255
+
+    bgak = np.where(mask, blurred, 0)
+    ip.display_image(bgak, False, "bgak")
+
+
+
+
+
 
 
 def main():
     # Read the image with color
     # gray_image = ip.read_image('data/images/example1_0.png')
     image = ip.read_image('data/images/example1_0.png', cv2.COLOR_BGR2RGB)
-    ip.display_image(image, False, 'Original Image')   
+    # ip.display_image(image, False, 'Original Image')   
 
     # Detect center service box point
     center_pt = find_service_box_center_point(image)
@@ -208,14 +232,19 @@ def main():
     # Use center service box point to find left and right corners of service box
     left_pt, right_pt = find_service_box_corner_points(image, center_pt[0], center_pt[1])
 
-    
-
     # Draw points on the image
     image_copy = np.copy(image)
     cv2.circle(image_copy, center_pt, 4, (255, 0, 0), -1)
     cv2.circle(image_copy, right_pt, 4, (255, 0, 0), -1)
     cv2.circle(image_copy, left_pt, 4, (255, 0, 0), -1)
     ip.display_image(image_copy, False, 'Final Image')
+
+    line = [left_pt, right_pt]
+    print(line)
+
+    # Find longest horizontal line below the service line
+    find_baseline(image, line)
+
 
     # Final Step
     # Homography to transform image to top-down view
